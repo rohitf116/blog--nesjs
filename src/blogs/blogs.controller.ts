@@ -1,34 +1,70 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { BlogsService } from './blogs.service';
 import { CreateBlogDto } from './dto/create-blog.dto';
 import { UpdateBlogDto } from './dto/update-blog.dto';
+import { AuthGuard } from '@nestjs/passport';
+import { GetUser } from 'src/users/get-current-user.decorator';
+import { User } from 'src/users/schemas/user.schema';
+import { AuthService } from 'src/users/auth.service';
+import { ValidateObjectId } from 'src/decorators/validObjectId.decorator';
+import { Types } from 'mongoose';
+import { AuthorizationGuard } from 'src/users/authorization.guard';
 
 @Controller('blogs')
 export class BlogsController {
-  constructor(private readonly blogsService: BlogsService) {}
+  constructor(
+    private readonly blogsService: BlogsService,
+    private authService: AuthService,
+  ) {}
 
   @Post()
-  create(@Body() createBlogDto: CreateBlogDto) {
-    return this.blogsService.create(createBlogDto);
+  @UseGuards(AuthGuard())
+  create(@Body() createBlogDto: CreateBlogDto, @GetUser() id: any) {
+    return this.blogsService.create(createBlogDto, id);
   }
 
+  @Get('/who')
+  @UseGuards(AuthGuard())
+  who(@GetUser() user: any) {
+    return user;
+  }
+  @Get('/my')
+  @UseGuards(AuthGuard())
+  my(@GetUser() userId: any) {
+    return this.blogsService.my(userId);
+  }
   @Get()
   findAll() {
     return this.blogsService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.blogsService.findOne(+id);
+  findOne(@ValidateObjectId() id: Types.ObjectId) {
+    return this.blogsService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateBlogDto: UpdateBlogDto) {
-    return this.blogsService.update(+id, updateBlogDto);
+  @UseGuards(AuthGuard())
+  update(
+    @ValidateObjectId() id: Types.ObjectId,
+    @Body() updateBlogDto: UpdateBlogDto,
+    @GetUser() user: any,
+  ) {
+    return this.blogsService.update(id, updateBlogDto, user);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.blogsService.remove(+id);
+  @UseGuards(AuthGuard())
+  remove(@ValidateObjectId() id: Types.ObjectId, @GetUser() userId: any) {
+    return this.blogsService.remove(id, userId);
   }
 }
